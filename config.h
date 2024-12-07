@@ -7,7 +7,7 @@
 #define POSTGRES_HOST "PG_host"
 #define POSTGRES_PASSWORD "your_password"
 #define REDIS_HOST "REDIS_host"
-#define REDIS_PORT 1234
+#define REDIS_PORT 1233
 
 #endif // CONFIG_H
 
