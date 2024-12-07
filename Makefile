@@ -8,7 +8,7 @@ FILES=main.c extclib/extclib.o
 default: build run
 
 build: $(FILES)
-	$(CC) $(CFLAGS) $(FILES) -o main $(LDFLAGS)
+	$(CC) $(CFLAGS) $(FILES) -o main.0 $(LDFLAGS)
 
 run: main
 	./main
