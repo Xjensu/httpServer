@@ -13,10 +13,10 @@ typedef struct HTTPreq {
 
 typedef struct HTTP HTTP;
 
-extern HTTP *new_http(char *address);
+extern HTTP *new_http(char *address, PGconn *pg_conn);
 extern void free_http(HTTP *http);
 
-extern void handle_http(HTTP *http, char *path, void(*)(int, HTTPreq*));
+void handle_http(HTTP *http, char *path, void(*handle)(int, HTTPreq*, PGconn*));
 extern int8_t listen_http(HTTP *http);
 
 extern void parsehtml_http(int conn, char *filename);

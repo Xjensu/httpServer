@@ -2,12 +2,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define POSTGRES_USER "pg_user"
-#define POSTGRES_DB "Daabase"
-#define POSTGRES_HOST "PG_host"
-#define POSTGRES_PASSWORD "your_password"
-#define REDIS_HOST "REDIS_host"
-#define REDIS_PORT 1234
+#define POSTGRES_USER "default_user"
+#define POSTGRES_DB "_test_server"
+#define POSTGRES_HOST "localhost"
+#define POSTGRES_PASSWORD "7yu7ukmaj3"
+#define REDIS_HOST "127.0.0.1"
+#define REDIS_PORT 6379
 
 #endif // CONFIG_H
 

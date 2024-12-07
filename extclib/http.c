@@ -4,7 +4,9 @@
 #include <string.h>
 #include <libpq-fe.h>
 #include <hiredis/hiredis.h>
-
+#include <time.h>
+#include <libpq-fe.h> 
+#include <hiredis/hiredis.h>
 
 #include "hashtab.h"
 #include "net.h"
@@ -18,8 +20,9 @@ typedef struct HTTP {
 	char *host;
 	int32_t len;
 	int32_t cap;
-	void(**funcs)(int, HTTPreq*);
+	void(**funcs)(int, HTTPreq*, PGconn*);
 	HashTab *tab;
+	PGconn *pg_conn;
 } HTTP;
 
 static HTTPreq _new_request(void);
@@ -28,14 +31,15 @@ static void _null_request(HTTPreq *request);
 static int8_t _switch_http(HTTP *http, int conn, HTTPreq *request);
 static void _page404_http(int conn);
 
-extern HTTP *new_http(char *address) {
+extern HTTP *new_http(char *address, PGconn *pg_conn) {
 	HTTP *http = (HTTP*)malloc(sizeof(HTTP));
 	http->cap = 1000;
 	http->len = 0;
 	http->host = (char*)malloc(sizeof(char)*strlen(address)+1);
 	strcpy(http->host, address);
 	http->tab = new_hashtab(http->cap, STRING_TYPE, DECIMAL_TYPE);
-	http->funcs = (void(**)(int, HTTPreq*))malloc(http->cap * (sizeof (void(*)(int, HTTPreq*))));
+	http->funcs = (void(**)(int, HTTPreq*, PGconn*))malloc(http->cap * (sizeof (void(*)(int, HTTPreq*, PGconn*))));
+	http->pg_conn = pg_conn;
 	return http;
 }
 
@@ -46,14 +50,13 @@ extern void free_http(HTTP *http) {
 	free(http);
 }
 
-extern void handle_http(HTTP *http, char *path, void(*handle)(int, HTTPreq*)) {
+extern void handle_http(HTTP *http, char *path, void(*handle)(int, HTTPreq*, PGconn*)) {
 	set_hashtab(http->tab, string(path), decimal(http->len));
 	http->funcs[http->len] = handle;
 	http->len += 1;
 	if (http->len == http->cap) {
 		http->cap <<= 1;
-		http->funcs = (void(**)(int, HTTPreq*))realloc(http->funcs, 
-			http->cap * (sizeof (void(*)(int, HTTPreq*))));
+		http->funcs = (void(**)(int, HTTPreq*, PGconn*))realloc(http->funcs, http->cap * (sizeof (void(*)(int, HTTPreq*, PGconn*))));
 	}
 }
 
@@ -65,9 +68,10 @@ extern int8_t listen_http(HTTP *http) {
 	}
 	while(1) {
 		int conn = accept_net(listener);
-		if (conn < 0) {
-			continue;
-		}
+		if (conn < 0) continue;
+		
+		clock_t start_time = clock(); // Для получения времени за которое запрос был обработан
+
 		HTTPreq req = _new_request();
 		while(1) {
 			char buffer[BUFSIZ] = {0};
@@ -81,6 +85,10 @@ extern int8_t listen_http(HTTP *http) {
 			}
 		}
 		_switch_http(http, conn, &req);
+
+		clock_t end_time = clock();
+		printf("Request processed in %.6f seconds\n", (double)(end_time - start_time)/ CLOCKS_PER_SEC );
+
 		close_net(conn);
 	}
 	close_net(listener);
@@ -173,11 +181,11 @@ static int8_t _switch_http(HTTP *http, int conn, HTTPreq *request) {
 			return 2;
 		}
 		index = get_hashtab(http->tab, string(buffer)).decimal;
-		http->funcs[index](conn, request);
+		http->funcs[index](conn, request, http->pg_conn);
 		return 0;
 	}
 	int32_t index = get_hashtab(http->tab, string(request->path)).decimal;
-	http->funcs[index](conn, request);
+	http->funcs[index](conn, request, http->pg_conn);
 	return 0;
 }
 

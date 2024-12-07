@@ -1,30 +1,31 @@
 #include <stdio.h> 
 #include <stdio.h> 
 #include <string.h> 
+#include <libpq-fe.h> 
+#include <hiredis/hiredis.h>
 
 #include "extclib/http.h" 
+#include "page_methods/routes.h"
+#include "config.h"
 
-void index_page(int conn, HTTPreq *req); 
-void about_page(int conn, HTTPreq *req); 
 int main(void) { 
-	HTTP *serve = new_http("127.0.0.1:7545"); 
-	handle_http(serve, "/", index_page); 
-	handle_http(serve, "/about/", about_page); 
-	listen_http(serve); 
+	char conninfo[256];
+	snprintf(conninfo, 256, "user=%s dbname=%s host=%s password=%s", 
+		POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD); 
+	PGconn *pg_conn = PQconnectdb(conninfo); 
+	if (PQstatus(pg_conn) != CONNECTION_OK) { 
+		fprintf(stderr, "Connection to database failed: %s", PQerrorMessage(pg_conn)); 
+		PQfinish(pg_conn); 
+		return 1; 
+	}
+	HTTP *serve = new_http("127.0.0.1:7545", pg_conn); 
+
+	handle_http(serve, "/", (void (*)(int, HTTPreq *, PGconn *)) index_page); 
+	handle_http(serve, "/about/", (void (*)(int, HTTPreq *, PGconn *))about_page); 
+	listen_http(serve);
+
 	free_http(serve); 
+	PQfinish(pg_conn);
 	return 0; 
-} 
-void index_page(int conn, HTTPreq *req) { 
-	printf("%s - %s - %s\n", req->method, req->path, req->proto); 
-	if(strcmp(req->path, "/") != 0) { 
-		parsehtml_http(conn, "page404.html"); return; 
-	} 
-	parsehtml_http(conn, "index.html"); 
-} 
-void about_page(int conn, HTTPreq *req) { 
-	if(strcmp(req->path, "/about/") != 0) { 
-		parsehtml_http(conn, "page404.html"); 
-		return; 
-	} 
-	parsehtml_http(conn, "about.html"); 
 }
+
