@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -std=c99 -I/usr/include/postgresql -I/usr/include/hiredis
-LDFLAGS=-lpq -lhiredis
+LDFLAGS=-lpq -lhiredis -lssl -lcrypto
 
 FILES=main.c extclib/extclib.o page_methods/pm.o
 

@@ -21,7 +21,9 @@ int main(void) {
 	HTTP *serve = new_http("127.0.0.1:7545", pg_conn); 
 
 	handle_http(serve, "/", (void (*)(int, HTTPreq *, PGconn *)) index_page); 
-	handle_http(serve, "/about/", (void (*)(int, HTTPreq *, PGconn *))about_page); 
+	handle_http(serve, "/about/", (void (*)(int, HTTPreq *, PGconn *))about_page);
+	handle_http(serve, "/register", (void (*)(int, HTTPreq *, PGconn *))register_page);
+ 
 	listen_http(serve);
 
 	free_http(serve); 
